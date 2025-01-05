@@ -1,72 +1,41 @@
+import os
 import pandas as pd
-import numpy as np
-import joblib
-from sklearn.linear_model import Ridge
-from sklearn.preprocessing import StandardScaler
+from DataExtractor import DataExtractor
+from NBAStandingPredictor import NBAStandingPredictor
 
-
-class NBAStandingPredictor:
-    def __init__(self, model_path, scaler_path):
-        self.model = joblib.load(model_path)
-        self.scaler = joblib.load(scaler_path)
-
-    def preprocess_data(self, input_data):
-        required_features = ["PW", "SRS", "NRtg", "ORtg", "TS%", "DRtg", "PA/G", "eFG%", "3P%", "FG%"]
-        input_data = input_data[required_features]
-        input_data.fillna(input_data.mean(), inplace=True)
-        #input_data = input_data.drop_duplicates(subset=["Team"])
-
-        # Debugging: Check input data after filtering
-        print(f"Input data columns after filtering: {input_data.columns.tolist()}")
-        print(f"Input data shape after filtering: {input_data.shape}")
-
-        # Convert to NumPy array to avoid feature name mismatches
-        input_data_array = input_data.to_numpy()
-
-        # Debugging: Check array shape
-        print(f"Processed data shape (NumPy): {input_data_array.shape}")
-
-        # Scale the data
-        input_data_scaled = self.scaler.transform(input_data_array)
-        return input_data_scaled
-
-    def predict_standings(self, input_data, team_names):
-        # Preprocess the data
-        processed_data = self.preprocess_data(input_data)
-
-        # Debugging: Check processed data before prediction
-        print(f"Processed data shape before prediction: {processed_data.shape}")
-
-        # Predict standings
-        predictions = self.model.predict(processed_data)
-
-        # Debugging: Print predictions
-        print(f"Predictions: {predictions}")
-
-        # Create standings DataFrame
-        standings = pd.DataFrame({
-            "Team": team_names,
-            "Predicted W/L%": predictions
-        }).sort_values(by="Predicted W/L%", ascending=False).reset_index(drop=True)
-        standings["Predicted Rank"] = standings.index + 1
-        return standings
-
-
-if __name__ == "__main__":
+def main():
+    # Define constants
+    SEASON = 2025  # Update this to the desired season
     MODEL_PATH = "ridge_model.joblib"
     SCALER_PATH = "scaler.joblib"
+    EXTRACTED_DATA_PATH = "extracted_data.csv"
+    PREDICTED_STANDINGS_PATH = "predicted_standings_ridge.csv"
 
+    # Step 1: Data Extraction and Cleaning
+    print("Starting data extraction...")
+    extractor = DataExtractor(season=SEASON)
+    extracted_data = extractor.extract()
+    print(f"Extracted data saved to {EXTRACTED_DATA_PATH}.")
+
+    # Step 2: Load extracted data
+    print("Loading extracted data...")
+    extracted_data = pd.read_csv(EXTRACTED_DATA_PATH)
+
+    # Extract team names and drop unnecessary columns for predictions
+    team_names = extracted_data["Team"]
+    prediction_input_data = extracted_data.drop(columns=["Team", "Season"], errors="ignore")
+
+    # Step 3: Predict Standings
+    print("Initializing predictor...")
     predictor = NBAStandingPredictor(model_path=MODEL_PATH, scaler_path=SCALER_PATH)
 
-    # Load and preprocess the data
-    current_season_data = pd.read_csv("Featured_data_2025.csv")
+    print("Making predictions...")
+    predicted_standings = predictor.predict_standings(prediction_input_data, team_names)
 
-    team_names = current_season_data["Team"]
-    current_season_data = current_season_data.drop(columns=["Team", "Unnamed: 0"])
-
-    # Make predictions
-    predicted_standings = predictor.predict_standings(current_season_data, team_names)
-
-    # Save or display results
-    predicted_standings.to_csv("predicted_standings_ridge.csv", index=False)
+    # Step 4: Save and display predictions
+    predicted_standings.to_csv(PREDICTED_STANDINGS_PATH, index=False)
+    print(f"Predicted standings saved to {PREDICTED_STANDINGS_PATH}.")
     print(predicted_standings)
+
+if __name__ == "__main__":
+    main()
