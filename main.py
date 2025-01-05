@@ -12,13 +12,9 @@ class NBAStandingPredictor:
 
     def preprocess_data(self, input_data):
         required_features = ["PW", "SRS", "NRtg", "ORtg", "TS%", "DRtg", "PA/G", "eFG%", "3P%", "FG%"]
-
-        print(f"Input data columns before filtering: {input_data.columns.tolist()}")
-        print(f"Input data shape before filtering: {input_data.shape}")
-
-        # Select required features and handle missing values
         input_data = input_data[required_features]
         input_data.fillna(input_data.mean(), inplace=True)
+        #input_data = input_data.drop_duplicates(subset=["Team"])
 
         # Debugging: Check input data after filtering
         print(f"Input data columns after filtering: {input_data.columns.tolist()}")
@@ -32,9 +28,6 @@ class NBAStandingPredictor:
 
         # Scale the data
         input_data_scaled = self.scaler.transform(input_data_array)
-
-        # Debugging: Check scaled data shape
-        print(f"Scaled data shape: {input_data_scaled.shape}")
         return input_data_scaled
 
     def predict_standings(self, input_data, team_names):
@@ -68,17 +61,12 @@ if __name__ == "__main__":
     # Load and preprocess the data
     current_season_data = pd.read_csv("Featured_data_2025.csv")
 
-    # Drop unwanted columns
     team_names = current_season_data["Team"]
     current_season_data = current_season_data.drop(columns=["Team", "Unnamed: 0"])
-
-    # Debugging: Check initial data
-    print(f"Initial data shape: {current_season_data.shape}")
-    print(f"Initial data columns: {current_season_data.columns.tolist()}")
 
     # Make predictions
     predicted_standings = predictor.predict_standings(current_season_data, team_names)
 
     # Save or display results
-    predicted_standings.to_csv("predicted_standings.csv", index=False)
+    predicted_standings.to_csv("predicted_standings_ridge.csv", index=False)
     print(predicted_standings)
